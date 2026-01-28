@@ -1,55 +1,55 @@
-## I2C Sensor Error Handling & Stack Implementation
+# README
 
-## Overview
+## What this is
 
-This project demonstrates a simple, embedded-style design using two components:
+This project shows how I’d handle sensor errors in a simple embedded-style system.
 
-* **Python** simulates an I2C sensor, generates common I2C errors, and logs numeric error codes.
-* **C** implements a linked-list stack that stores these error codes with a maximum size of 32 entries and circular overwrite behavior.
+* **Python** simulates an I2C sensor and generates common I2C-related errors.
+* Those errors are written as numeric codes to a file.
+* **C** reads those error codes and stores them in a stack implemented using a linked list.
+* The stack has a fixed size (32). If it overflows, the oldest error is overwritten.
 
-The solution runs fully on **Windows**, without Raspberry Pi hardware or real I2C.
+Everything runs on a **Windows machine**, no Raspberry Pi or real I2C hardware needed.
 
-## Design Decisions
 
-* **Python** is used to mock I2C behavior and error handling in a clear, hardware-independent way.
-* **C** is used for the stack to demonstrate low-level memory management.
-* Logic is clearly separated:
+## Why it’s designed this way
 
-  * Python handles sensor simulation and error generation.
-  * C handles data storage and stack operations.
-* Error codes are exchanged via a simple text file to mimic real system boundaries.
+* Python is easy to use for mocking hardware behavior and error conditions.
+* C is used for the stack to show proper memory handling and embedded-style constraints.
+* The logic is clearly split:
 
-## How to Build and Run
+  * Python → sensor behavior and error generation
+  * C → data storage and stack operations
+* A text file is used to pass error codes, which keeps the two parts independent and realistic.
 
-### 1. Run I2C Simulation
 
-```bash
-python problem1_i2c_simulator.py
-```
+## How to run it
 
-This generates `error_codes.txt`.
+1. Run the Python script:
 
-### 2. Compile Stack Program
+   ```bash
+   python problem1_i2c_simulator.py
+   ```
 
-```bash
-gcc problem2_error_stack.c -o error_stack
-```
+   This creates `error_codes.txt`.
 
-### 3. Run Stack Program
+2. Compile the C program:
 
-```bash
-error_stack
-```
+   ```bash
+   gcc problem2_error_stack.c -o error_stack
+   ```
 
+3. Run the stack program:
+
+   ```bash
+   error_stack
+   ```
 
 ## Assumptions
 
-* Error codes are integers
-* Maximum stack size is 32 entries
-* Oldest stack entry is overwritten on overflow
-* System runs in a single-threaded environment
-* Randomized errors are acceptable for simulation
+* Error codes are simple integers
+* Stack size is limited to 32 entries
+* Old errors are overwritten when the stack is full
+* Single-threaded execution
+* Random errors are acceptable for simulation
 
-## Notes
-
-The Python I2C logic can be replaced with real Raspberry Pi I2C libraries with minimal changes, and the C stack is suitable for embedded systems with fixed memory constraints.
