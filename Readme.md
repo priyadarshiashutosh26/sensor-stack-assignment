@@ -28,7 +28,7 @@ Everything runs on a **Windows machine**, no Raspberry Pi or real I2C hardware n
 1. Run the Python script:
 
    ```bash
-   python problem1_i2c_simulator.py
+   python sensor.py
    ```
 
    This creates `error_codes.txt`.
@@ -36,13 +36,13 @@ Everything runs on a **Windows machine**, no Raspberry Pi or real I2C hardware n
 2. Compile the C program:
 
    ```bash
-   gcc problem2_error_stack.c -o error_stack
+   gcc stack.c -o stack
    ```
 
 3. Run the stack program:
 
    ```bash
-   error_stack
+   stack
    ```
 
 ## Assumptions
