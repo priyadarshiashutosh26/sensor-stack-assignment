@@ -3,101 +3,100 @@
 
 #define MAX_STACK_SIZE 32
 
-typedef struct StackNode {
-    int error_code;
-    struct StackNode *next;
-} StackNode;
+/* Error Codes */
+#define ERR_I2C_TIMEOUT        1
+#define ERR_SENSOR_DISCONNECT  2
+#define ERR_INVALID_DATA       3
 
+/* Stack Node */
+typedef struct Node {
+    int error_code;
+    struct Node *next;
+} Node;
+
+/* Stack Control */
 typedef struct {
-    StackNode *top;
-    StackNode *bottom;
+    Node *top;
+    Node *bottom;
     int size;
 } Stack;
 
 /* Initialize stack */
-void stack_init(Stack *stack) {
-    stack->top = NULL;
-    stack->bottom = NULL;
-    stack->size = 0;
+void initStack(Stack *s) {
+    s->top = NULL;
+    s->bottom = NULL;
+    s->size = 0;
 }
 
 /* Push with circular overwrite */
-void stack_push(Stack *stack, int error_code) {
-    StackNode *node = malloc(sizeof(StackNode));
-    if (!node) return;
+void push(Stack *s, int error_code) {
+    Node *newNode = (Node *)malloc(sizeof(Node));
+    if (!newNode) return;
 
-    node->error_code = error_code;
-    node->next = stack->top;
-    stack->top = node;
+    newNode->error_code = error_code;
+    newNode->next = s->top;
+    s->top = newNode;
 
-    if (stack->size == 0)
-        stack->bottom = node;
+    if (s->size == 0)
+        s->bottom = newNode;
 
-    if (stack->size < MAX_STACK_SIZE) {
-        stack->size++;
+    if (s->size < MAX_STACK_SIZE) {
+        s->size++;
     } else {
-        StackNode *current = stack->top;
-        while (current->next != stack->bottom)
-            current = current->next;
+        /* Remove oldest (bottom) */
+        Node *temp = s->top;
+        while (temp->next != s->bottom)
+            temp = temp->next;
 
-        free(stack->bottom);
-        stack->bottom = current;
-        stack->bottom->next = NULL;
+        free(s->bottom);
+        s->bottom = temp;
+        s->bottom->next = NULL;
     }
 }
 
 /* Pop operation */
-int stack_pop(Stack *stack, int *error_code) {
-    if (stack->size == 0)
+int pop(Stack *s) {
+    if (s->size == 0)
         return -1;
 
-    StackNode *temp = stack->top;
-    *error_code = temp->error_code;
+    Node *temp = s->top;
+    int code = temp->error_code;
 
-    stack->top = temp->next;
+    s->top = temp->next;
     free(temp);
-    stack->size--;
+    s->size--;
 
-    if (stack->size == 0)
-        stack->bottom = NULL;
+    if (s->size == 0)
+        s->bottom = NULL;
 
-    return 0;
+    return code;
 }
 
-/* Print stack */
-void stack_print(const Stack *stack) {
-    StackNode *current = stack->top;
-    printf("\nStack (latest → oldest):\n");
-
-    while (current) {
-        printf("Error Code: %d\n", current->error_code);
-        current = current->next;
+/* Display stack */
+void printStack(Stack *s) {
+    Node *temp = s->top;
+    printf("Stack (Top -> Bottom): ");
+    while (temp) {
+        printf("%d ", temp->error_code);
+        temp = temp->next;
     }
+    printf("\n");
 }
 
-/* Load error codes from Python output */
-void load_errors_from_file(Stack *stack, const char *filename) {
-    FILE *file = fopen(filename, "r");
-    if (!file) {
-        printf("Error opening error code file\n");
-        return;
-    }
+/* Example usage */
+int main() {
+    Stack errorStack;
+    initStack(&errorStack);
 
-    int code;
-    while (fscanf(file, "%d", &code) == 1) {
-        stack_push(stack, code);
-    }
+    /* Simulated sensor errors */
+    push(&errorStack, ERR_I2C_TIMEOUT);
+    push(&errorStack, ERR_INVALID_DATA);
+    push(&errorStack, ERR_SENSOR_DISCONNECT);
 
-    fclose(file);
-}
+    printStack(&errorStack);
 
-/* ---------------- Main ---------------- */
-int main(void) {
-    Stack error_stack;
-    stack_init(&error_stack);
-
-    load_errors_from_file(&error_stack, "error_codes.txt");
-    stack_print(&error_stack);
+    printf("Popped error: %d\n", pop(&errorStack));
+    printStack(&errorStack);
 
     return 0;
 }
