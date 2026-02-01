@@ -31,8 +31,6 @@ Everything runs on a **Windows machine**, no Raspberry Pi or real I2C hardware n
    python sensor.py
    ```
 
-   This creates `error_codes.txt`.
-
 2. Compile the C program:
 
    ```bash
