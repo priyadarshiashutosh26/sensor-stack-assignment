@@ -1,102 +1,103 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #define MAX_STACK_SIZE 32
 
-/* Error Codes */
-#define ERR_I2C_TIMEOUT        1
-#define ERR_SENSOR_DISCONNECT  2
-#define ERR_INVALID_DATA       3
+#define ERR_I2C_TIMEOUT        0xE1
+#define ERR_SENSOR_DISCONNECT  0xE2
+#define ERR_INVALID_DATA       0xE3
 
-/* Stack Node */
 typedef struct Node {
     int error_code;
     struct Node *next;
 } Node;
 
-/* Stack Control */
 typedef struct {
     Node *top;
     Node *bottom;
     int size;
 } Stack;
 
-/* Initialize stack */
+/* Stack functions */
 void initStack(Stack *s) {
-    s->top = NULL;
-    s->bottom = NULL;
+    s->top = s->bottom = NULL;
     s->size = 0;
 }
 
-/* Push with circular overwrite */
-void push(Stack *s, int error_code) {
-    Node *newNode = (Node *)malloc(sizeof(Node));
-    if (!newNode) return;
+void push(Stack *s, int code) {
+    Node *n = malloc(sizeof(Node));
+    if (!n) return;
 
-    newNode->error_code = error_code;
-    newNode->next = s->top;
-    s->top = newNode;
+    n->error_code = code;
+    n->next = s->top;
+    s->top = n;
 
     if (s->size == 0)
-        s->bottom = newNode;
+        s->bottom = n;
 
     if (s->size < MAX_STACK_SIZE) {
         s->size++;
     } else {
-        /* Remove oldest (bottom) */
-        Node *temp = s->top;
-        while (temp->next != s->bottom)
-            temp = temp->next;
+        Node *t = s->top;
+        while (t->next != s->bottom)
+            t = t->next;
 
         free(s->bottom);
-        s->bottom = temp;
+        s->bottom = t;
         s->bottom->next = NULL;
     }
 }
 
-/* Pop operation */
-int pop(Stack *s) {
-    if (s->size == 0)
-        return -1;
-
-    Node *temp = s->top;
-    int code = temp->error_code;
-
-    s->top = temp->next;
-    free(temp);
-    s->size--;
-
-    if (s->size == 0)
-        s->bottom = NULL;
-
-    return code;
-}
-
-/* Display stack */
 void printStack(Stack *s) {
-    Node *temp = s->top;
-    printf("Stack (Top -> Bottom): ");
-    while (temp) {
-        printf("%d ", temp->error_code);
-        temp = temp->next;
+    Node *t = s->top;
+    printf("ERROR STACK (newest → oldest): ");
+    while (t) {
+        printf("0x%X ", t->error_code);
+        t = t->next;
     }
     printf("\n");
 }
 
-/* Example usage */
+/* Error parser */
+int parse_error(const char *line) {
+    if (strstr(line, "I2C timeout"))
+        return ERR_I2C_TIMEOUT;
+    if (strstr(line, "Sensor disconnected"))
+        return ERR_SENSOR_DISCONNECT;
+    if (strstr(line, "Invalid sensor data"))
+        return ERR_INVALID_DATA;
+
+    return 0;
+}
+
 int main() {
+    FILE *pipe;
+    char line[256];
     Stack errorStack;
+
     initStack(&errorStack);
 
-    /* Simulated sensor errors */
-    push(&errorStack, ERR_I2C_TIMEOUT);
-    push(&errorStack, ERR_INVALID_DATA);
-    push(&errorStack, ERR_SENSOR_DISCONNECT);
+    /* Run Python unbuffered */
+    pipe = popen("python -u sensor.py", "r");
+    if (!pipe) {
+        perror("popen failed");
+        return 1;
+    }
 
-    printStack(&errorStack);
+    printf("Listening to sensor errors...\n");
 
-    printf("Popped error: %d\n", pop(&errorStack));
-    printStack(&errorStack);
+    /* Continuous read */
+    while (1) {
+        if (fgets(line, sizeof(line), pipe)) {
+            int err = parse_error(line);
+            if (err) {
+                push(&errorStack, err);
+                printStack(&errorStack);
+            }
+        }
+    }
 
+    pclose(pipe);
     return 0;
 }
